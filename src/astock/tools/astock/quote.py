@@ -1,5 +1,7 @@
 """
-A股行情数据工具 - 基于 akshare
+A股主板行情数据工具 - 基于 akshare
+
+【重要】本工具仅支持A股主板，不包括科创板和创业板。
 """
 
 from typing import List, Optional
@@ -10,9 +12,24 @@ from langchain.tools import tool
 from pydantic import BaseModel, Field
 
 
+def is_mainboard_stock(code: str) -> bool:
+    """检查是否为主板股票"""
+    code = str(code).strip()
+
+    # 沪市主板
+    if code.startswith(('600', '601', '603', '605')):
+        return True
+
+    # 深市主板
+    if code.startswith(('000', '001', '002', '003')):
+        return True
+
+    return False
+
+
 class StockQuoteInput(BaseModel):
     """获取股票实时行情参数"""
-    symbol: str = Field(description="股票代码，如 600519 (茅台) 或 000001.SZ (深交所格式)")
+    symbol: str = Field(description="股票代码，仅支持主板：沪市(600/601/603/605)、深市(000/001/002/003)，如 600519 (茅台) 或 000001.SZ")
     fields: Optional[List[str]] = Field(default=None, description="需要返回的字段列表，默认全部")
 
 
@@ -33,17 +50,16 @@ class SectorPerformanceInput(BaseModel):
 @tool(args_schema=StockQuoteInput)
 def astock_get_quote(symbol: str, fields: Optional[List[str]] = None) -> dict:
     """
-    获取A股实时行情数据
+    获取A股主板实时行情数据
 
     使用 akshare 的 stock_zh_a_spot_em() 获取实时行情。
-    支持所有A股、港股、美股的实时数据。
+    【重要】本工具仅支持A股主板，不包括科创板和创业板。
 
     Args:
-        symbol: 股票代码，可以是多种格式：
-                - 6位数字: 600519 (上海主板)
-                - 0开头6位: 000001 (深圳主板)
-                - 3开头6位: 300001 (创业板)
-                - 6开头3位: 688001 (科创板)
+        symbol: 股票代码，仅支持主板：
+                - 沪市主板: 600xxx, 601xxx, 603xxx, 605xxx (如 600519 茅台)
+                - 深市主板: 000xxx, 001xxx, 002xxx, 003xxx (如 000001 平安)
+                - 不支持: 300xxx (创业板)、688xxx (科创板)
         fields: 需要返回的字段，如 ["代码", "名称", "最新价", "涨跌幅", "成交量", "成交额"]
 
     Returns:
@@ -69,6 +85,14 @@ def astock_get_quote(symbol: str, fields: Optional[List[str]] = None) -> dict:
     try:
         # 标准化股票代码
         symbol = symbol.upper().replace('.SZ', '').replace('.SH', '').replace('.SS', '')
+
+        # 检查是否为主板股票
+        if not is_mainboard_stock(symbol):
+            return {
+                "error": f"股票代码 {symbol} 不属于主板，本项目仅支持主板股票",
+                "symbol": symbol,
+                "note": "支持主板：沪市(600/601/603/605)、深市(000/001/002/003)，不支持科创板(688)和创业板(300)"
+            }
 
         # 获取所有A股实时行情
         df = ak.stock_zh_a_spot_em()
@@ -115,13 +139,16 @@ def astock_get_kline(
     adjust: str = "qfq"
 ) -> dict:
     """
-    获取A股历史K线数据
+    获取A股主板历史K线数据
 
     使用 akshare 的 stock_zh_a_hist() 获取历史K线。
-    支持日线、周线、月线数据，支持前复权、后复权。
+    【重要】本工具仅支持A股主板，不包括科创板和创业板。
 
     Args:
-        symbol: 股票代码，如 600519
+        symbol: 股票代码，仅支持主板：
+                - 沪市主板: 600xxx, 601xxx, 603xxx, 605xxx
+                - 深市主板: 000xxx, 001xxx, 002xxx, 003xxx
+                - 不支持: 300xxx (创业板)、688xxx (科创板)
         period: 周期: daily(日线), weekly(周线), monthly(月线)
         start_date: 开始日期，格式 YYYYMMDD，如 20240101
         end_date: 结束日期，格式 YYYYMMDD，如 20241231，默认为今天
@@ -144,6 +171,14 @@ def astock_get_kline(
     try:
         # 标准化参数
         symbol = symbol.upper().replace('.SZ', '').replace('.SH', '')
+
+        # 检查是否为主板股票
+        if not is_mainboard_stock(symbol):
+            return {
+                "error": f"股票代码 {symbol} 不属于主板，本项目仅支持主板股票",
+                "symbol": symbol,
+                "note": "支持主板：沪市(600/601/603/605)、深市(000/001/002/003)，不支持科创板(688)和创业板(300)"
+            }
 
         # 设置默认结束日期
         if not end_date:
