@@ -1,6 +1,6 @@
 """模型接口 - LLM 调用"""
 
-from typing import List, Optional, Literal, TypedDict
+from typing import List, Optional, Literal, TypedDict, Union
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, BaseMessage
@@ -9,10 +9,10 @@ import os
 
 
 # 模型提供者
-MODEL_PROVIDER = Literal["openai", "anthropic"]
+MODEL_PROVIDER = Literal["openai", "anthropic", "deepseek"]
 
 # 默认模型
-DEFAULT_MODEL_PROVIDER: MODEL_PROVIDER = "openai"
+DEFAULT_MODEL_PROVIDER: MODEL_PROVIDER = "deepseek"  # 默认使用 DeepSeek
 
 
 class ModelConfig(TypedDict):
@@ -24,7 +24,7 @@ class ModelConfig(TypedDict):
     max_tokens: int
 
 
-def get_model_config(provider: MODEL_PROVIDER = "openai") -> ModelConfig:
+def get_model_config(provider: MODEL_PROVIDER = "deepseek") -> ModelConfig:
     """
     获取模型配置
 
@@ -50,15 +50,23 @@ def get_model_config(provider: MODEL_PROVIDER = "openai") -> ModelConfig:
             temperature=0.1,
             max_tokens=4096
         )
+    elif provider == "deepseek":
+        return ModelConfig(
+            provider="deepseek",
+            model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+            strong_model=os.getenv("DEEPSEEK_STRONG_MODEL", "deepseek-reasoner"),
+            temperature=0.1,
+            max_tokens=4096
+        )
     else:
         raise ValueError(f"不支持的模型提供者: {provider}")
 
 
 def _get_llm(
-    provider: MODEL_PROVIDER = "openai",
+    provider: MODEL_PROVIDER = "deepseek",
     model_type: Literal["normal", "strong"] = "normal",
     temperature: float = 0.1
-) -> ChatOpenAI | ChatAnthropic:
+) -> Union[ChatOpenAI, ChatAnthropic]:
     """
     获取 LLM 实例
 
@@ -98,6 +106,21 @@ def _get_llm(
             temperature=temp,
             max_tokens=config["max_tokens"],
             api_key=api_key
+        )
+
+    elif provider == "deepseek":
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise ValueError("未设置 DEEPSEEK_API_KEY")
+
+        base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+
+        return ChatOpenAI(
+            model=model_name,
+            temperature=temp,
+            max_tokens=config["max_tokens"],
+            api_key=api_key,
+            base_url=base_url
         )
 
 

@@ -43,19 +43,41 @@ def main():
     """主函数"""
     # 检查环境变量
     import os
-    if not os.getenv("LLM_API_OPENAI_KEY") and not os.getenv("LLM_API_ANTHROPIC_KEY"):
-        console.print("[red]错误: 未设置 LLM API 密钥[/red]")
-        console.print("请在 .env 文件中设置 LLM_API_OPENAI_KEY 或 LLM_API_ANTHROPIC_KEY")
+    api_keys = {
+        "deepseek": os.getenv("DEEPSEEK_API_KEY"),
+        "openai": os.getenv("LLM_API_OPENAI_KEY"),
+        "anthropic": os.getenv("LLM_API_ANTHROPIC_KEY"),
+    }
+
+    available_providers = [k for k, v in api_keys.items() if v]
+
+    if not available_providers:
+        console.print("[red]错误: 未设置任何 LLM API 密钥[/red]")
+        console.print("请在 .env 文件中设置以下任意一个:")
+        console.print("  - DEEPSEEK_API_KEY (推荐，国内可用)")
+        console.print("  - LLM_API_OPENAI_KEY")
+        console.print("  - LLM_API_ANTHROPIC_KEY")
         sys.exit(1)
 
     # 显示欢迎信息
     show_intro()
 
+    # 选择模型提供者（优先使用 DeepSeek）
+    if "deepseek" in available_providers:
+        model_provider = "deepseek"
+        console.print("[green]✓ 使用 DeepSeek 模型[/green]")
+    elif "anthropic" in available_providers:
+        model_provider = "anthropic"
+        console.print("[green]✓ 使用 Anthropic 模型[/green]")
+    else:
+        model_provider = "openai"
+        console.print("[green]✓ 使用 OpenAI 模型[/green]")
+
     # 创建智能体
     agent = AStockAgent(
         max_steps=20,
         max_steps_per_task=5,
-        model="anthropic" if os.getenv("LLM_API_ANTHROPIC_KEY") else "openai"
+        model=model_provider
     )
 
     # 交互循环

@@ -6,7 +6,9 @@ import sys
 # 添加 src 到路径
 sys.path.insert(0, '/workspace/dexter/src')
 
-os.environ['LLM_API_OPENAI_KEY'] = 'sk-test-key-placeholder'
+# 加载 .env 文件
+from dotenv import load_dotenv
+load_dotenv('/workspace/dexter/.env')
 
 import src.astock.agent as agent_module
 import src.astock.tools as tools_module

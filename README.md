@@ -22,10 +22,13 @@ cd /workspace/dexter
 bash install.sh
 
 # 3. 配置 API keys
-vim .env  # 添加 LLM_API_OPENAI_KEY 或 LLM_API_ANTHROPIC_KEY
+vim .env  # 添加以下任意一个:
+#   - DEEPSEEK_API_KEY (推荐，国内可用)
+#   - LLM_API_OPENAI_KEY
+#   - LLM_API_ANTHROPIC_KEY
 
 # 4. 验证安装
-python test_simple.py
+python verify_setup.py
 ```
 
 ### 使用
